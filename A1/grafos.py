@@ -19,7 +19,9 @@ class Vertice:
 
 class Grafo:
     '''
-    Grafo não-dirigido e ponderado
+    Grafo não-dirigido e ponderado \n
+    NOTA: Métodos de consulta que recebem vértices como parâmetros esperam:
+        Objeto(s) do tipo Vértice XOR índice (começando em 1, corrigido dentro dos metodos)
     '''
 
     def __init__(self, vertices: fset[Vertice], edges: fset[fset[Vertice]], weights: dict) -> None:
@@ -27,39 +29,50 @@ class Grafo:
         self.__edges = edges
         self.__weights = weights
 
-        # O(1)
+        # Para termos O(1) lá teremos O(n) aqui
         self.__len_vertices = len(self.__vertices)
         self.__len_edges = len(self.__edges)
 
-        # O(dict)
-        self.__grau = dict()
-        for v in self.__vertices:
-            self.__grau[v] = sum([1 for e in self.__edges if v in e])
+        default_list_range = range(self.__len_vertices)
 
-        self.__rotulo = dict()
+        self.__grau = list(default_list_range)
         for v in self.__vertices:
-            self.__rotulo[v] = v.label
+            self.__grau[v.num - 1] = sum([1 for e in self.__edges if v in e])
+
+        self.__rotulo = list(default_list_range)
+        for v in self.__vertices:
+            self.__rotulo[v.num - 1] = v.label
 
         # Representações
-        self.__matrix = list(range(self.__len_vertices))
-        self.__neighbours = dict()
-
-        self.__enum_vertices = enumerate(self.__vertices)
-
-        for i, v in self.__enum_vertices:
-            neighbours = [0]*self.__len_vertices
-            for j, b in self.__enum_vertices:
-                if fset([v, b]) in self.__edges:
-                    neighbours[j] = 1
-            self.__matrix[i] = neighbours
+        self.__neighbours = list(default_list_range)
+        self.__matrix = [[0]*self.__len_vertices]*self.__len_vertices
 
         for v in self.__vertices:
             neighbours = list()
-            for b in self.__vertices:
-                if fset([v, b]) in self.__edges:
-                    neighbours.append(b)
-            self.__neighbours[v] = neighbours
+            for u in self.__vertices:
+                if fset([v.num, u.num]) in self.__edges:
+                    pair = (u.num, self.__weights[fset([u.num,v.num])])
+                    neighbours.append(pair)
+            self.__neighbours[v.num - 1] = neighbours
+        
+        for v in self.__vertices:
+            for u in self.__vertices:
+                if fset([u, v]) in self.__edges:
+                    self.__matrix[v.num - 1][u.num - 1] = self.__weights[fset([u, v])]
+                else:
+                    self.__matrix[v.num - 1][u.num - 1] = float('inf')
 
+    # Debugging
+    def __repr__(self) -> str:
+        return f"".join(str(v) + " " for v in self.__vertices).join(str(e) + " " for e in self.__edges)
+
+    @property
+    def matrix(self):
+        return self.__matrix
+    
+    @property
+    def adj_list(self):
+        return self.__neighbours
 
     def qtd_vertices(self) -> int: #O(1)
         return self.__len_vertices
@@ -67,22 +80,143 @@ class Grafo:
     def qtd_arestas(self) -> int: #O(1)
         return self.__len_edges
     
-    def grau(self, v) -> int: #O(dict)
-        return self.__grau[v]
+    def grau(self, v) -> int: #O(1), assumindo O(isinstace) = O(1)
+        if isinstance(v, int):
+            return self.__grau[v - 1]
+        elif isinstance(v, Vertice):
+            return self.__grau[v.num - 1]
+        else:
+            raise ValueError
     
-    def rotulo(self, v) -> str: #O(dict)
-        return self.__rotulo[v]
+    def rotulo(self, v) -> str: #O(1), assumindo O(isinstace) = O(1)
+        if isinstance(v, int):
+            return self.__rotulo[v - 1]
+        elif isinstance(v, Vertice):
+            return self.__rotulo[v.num - 1]
+        else:
+            raise ValueError
     
-    def vizinhos(self, v) -> list: #O(dict)
-        return self.__neighbours[v]
+    def vizinhos(self, v) -> list: #O(1)
+        if isinstance(v, int):
+            return self.__neighbours[v - 1]
+        elif isinstance(v, Vertice):
+            return self.__neighbours[v.num - 1]
+        else:
+            raise ValueError
     
-    def ha_aresta(self, u, v) -> bool: #O(dict)
-        return fset([u, v]) in self.__edges
+    def ha_aresta(self, u, v) -> bool: #O(1), assumindo O(isinstace) = O(1)
+        if isinstance(u, int) and isinstance(v, int):
+            return self.__matrix[u - 1][v - 1] != 0
+        elif isinstance(u, Vertice) and isinstance(v, Vertice):
+            return self.__matrix[u.num - 1][v.num - 1] != 0
+        else:
+            raise ValueError
 
-    #TODO melhorar abaixo
-    def peso(self, u, v) -> float: 
-        p = fset([u, v])
-        return self.__weights[p] if p in self.__edges else float('inf')
+    def peso(self, u, v) -> float: #O(1), assumindo O(isinstace) = O(1)
+        if isinstance(u, int) and isinstance(v, int):
+            return self.__matrix[u - 1][v - 1]
+        elif isinstance(u, Vertice) and isinstance(v, Vertice):
+            return self.__matrix[u.num - 1][v.num - 1]
+        else:
+            raise ValueError
+
+    # 2 [Buscas]
+    def busca_largura(self, indice):
+        '''
+        NOTA: As estruturas de dados internaos operam
+        sobre os índices corrigidos, exceto a fila
+        que armazena os indices originais
+        '''
+        size_V = self.qtd_vertices()
+        C = [False]*size_V
+        D = [float('inf')]*size_V
+        A = [None]*size_V
+        
+        # Vértice de origme
+        C[indice - 1] = True
+        D[indice - 1] = 0
+
+        # Fila de visitas
+        Q = list()
+        Q.append(indice)
+
+        while len(Q) > 0:
+            I = Q.pop(0)
+            for V, _ in self.vizinhos(I):
+                if not C[V - 1]:
+                    C[V - 1] = True
+                    D[V - 1] = D[I - 1] + 1
+                    A[V - 1] = I
+                    Q.append(V)
+
+        for d in set(D):
+            print(f"{d}: ", end = "")
+            for i, p in enumerate(D):
+                if p == d:
+                    print(f"{i + 1} ", end = "")
+            print()
+
+    # 3 [Ciclo Euleriano]
+    def ciclo_euleriano(self):
+        V: Vertice = None
+        for v in self.__vertices:
+            if self.grau(v) % 2 != 0:
+                print(f"Vértice {v} com grau ímpar, não há ciclo euleriano.")
+                break
+            V = v if len(self.vizinhos(v)) != 0 else V
+        
+        # Usando Hierholzer
+        C = [False]*self.qtd_arestas()
+        E = enumerate(self.__edges)
+        r, ciclo = self.__subciclo_euleriano(V, C, E)
+
+        if not r: return (r, None)
+        else:
+            for i, _ in E:
+                if not C[i]: return (C[i], None)
+            
+            return (True, ciclo)
+        
+    def __subciclo_euleriano(self, v: Vertice, C: list[bool], E: list) -> (bool, tuple):
+        ciclo = list()
+        ciclo.append(v)
+        T: Vertice = v
+        VU: fset = None
+
+        while True:
+            p = 0
+            for i, e in E:
+                if not C[i]: return (False, None)
+                p += 1
+                VU = e
+            
+            C[p] = True
+            v = list(VU.difference(fset([v])))[0]
+
+            ciclo.append(v)
+
+            if T == v: break
+        
+        for i, e in E:
+            if not C[i]:
+                r: bool = None
+                ciclo2: list = None
+                X: Vertice = None
+                for x in e:
+                    X = x
+                    r, ciclo2 = self.__subciclo_euleriano(x, C, E)
+                    break
+
+                if not r: return (False, None)
+                
+                if ciclo2.count(X) == 2:
+                    where_to = ciclo.index(X)
+                    ciclo.remove(X)
+                    for p in ciclo2:
+                        ciclo.insert(where_to + 1, p)
+
+        return (True, ciclo)
+            
 
 # class Grafos
 
@@ -120,7 +254,7 @@ def ler(file_name: str) -> Grafo:
             if check:
                 while True:
                     this_line = file.readline().split()
-                    if this_line == []: break
+                    if len(this_line) == 0: break
 
                     x = int(this_line[0])
                     y = int(this_line[1])
@@ -132,7 +266,7 @@ def ler(file_name: str) -> Grafo:
             else:
                 print(f".net file in wrong format! Was expecting *edges or *arcs, got {comment_line}")
 
-            return Grafo(vertices, edges, weights)
+            return Grafo(fset(vertices), fset(edges), weights)
         # with open
     else:
         print("Arquivo de tipo desconhecido.")
