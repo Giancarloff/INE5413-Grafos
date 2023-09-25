@@ -14,3 +14,6 @@ G.busca_largura(1)
 
 print("# Ciclo Euleriano")
 print(G.ciclo_euleriano())
+
+print("Bellman-Ford")
+print(G.bellman_ford(1))

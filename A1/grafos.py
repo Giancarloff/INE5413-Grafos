@@ -216,16 +216,59 @@ class Grafo:
                         ciclo.insert(where_to + 1, p)
 
         return (True, ciclo)
-            
 
-# class Grafos
+    # 4 [Bellman-Ford ou Dijkstra]
+    def bellman_ford(self, origem) -> (bool, list, list):
+        if (isinstance(origem, Vertice)):
+            origem = origem.num
+
+        D = [float('inf')]*self.qtd_vertices()
+        A = [None]*self.qtd_vertices()
+        D[origem - 1] = 0
+
+        for i in range(1, self.qtd_vertices() - 1):
+            for e in self.__edges:
+                u, v = e
+                if D[v - 1] > D[u - 1] + self.__weights[e]:
+                    D[v - 1] = D[u - 1] + self.__weights[e]
+                    A[v - 1] = u
+
+        for e in self.__edges:
+            u, v = e
+            if D[v - 1] > D[u - 1] + self.__weights[e]:
+                self.__bellman_ford_print(False, D, A, origem=origem)
+                return (False, None, None)
+                
+            
+        self.__bellman_ford_print(True, D, A, origem=origem)
+        return (True, D, A)
+    
+    def __bellman_ford_print(self, found, D, A, origem):
+        if not found:
+            print("Menor caminho not found.")
+
+        for v in self.__vertices:
+            d = 0
+            if v.num == origem:
+                print(f"{v.num}: {origem}; d = {d}")
+            else:
+                next_vertice = A[v.num]
+                cost = 0
+                A_list = list()
+                A_list.append(v)
+                while v != origem:
+                    d += self.__weights(fset([v, next_vertice]))
+                    v = next_vertice
+                    next_vertice = A[v.num]
+                print(f"{v.num}: ".join(str(u.num) + " " for u in self.__vertices if u == A[v.num - 1]))
 
 def ler(file_name: str) -> Grafo:
 
     '''
     NOTA: Se o formato do arquivo não for exatamente
     o explícito no final do enunciado da atividade,
-    o método não funciona.
+    o método não funciona.\n
+    NOTA: Os arcos usam os índices dos vértices, não objetos do tipo vértice.
     '''
 
     # If it is .net
