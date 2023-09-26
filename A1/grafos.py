@@ -1,22 +1,5 @@
 class fset(frozenset): ...
 
-class Vertice:
-
-    def __init__(self, label: str, num: int) -> None:
-        self.__label = label
-        self.__num = num
-
-    @property
-    def num(self) -> int:
-        return self.__num
-    
-    @property
-    def label(self) -> int:
-        return self.__label
-    
-    def __repr__(self) -> str:
-        return f"({self.__num}, {self.__label})"
-
 class Grafo:
     '''
     Grafo não-dirigido e ponderado \n
@@ -24,10 +7,16 @@ class Grafo:
         Objeto(s) do tipo Vértice XOR índice (começando em 1, corrigido dentro dos metodos)
     '''
 
-    def __init__(self, vertices: fset[Vertice], edges: fset[fset[Vertice]], weights: dict) -> None:
-        self.__vertices = vertices
+    def __init__(self, vertices: fset, edges: fset[fset], weights: dict) -> None:
         self.__edges = edges
         self.__weights = weights
+
+        self.__vertices = [0]*len(vertices)
+        self.__rotulo = [""]*len(vertices)
+
+        for index, label in vertices:
+            self.__vertices[index - 1] = index
+            self.__rotulo[index - 1] = label
 
         # Para termos O(1) lá teremos O(n) aqui
         self.__len_vertices = len(self.__vertices)
@@ -37,11 +26,7 @@ class Grafo:
 
         self.__grau = list(default_list_range)
         for v in self.__vertices:
-            self.__grau[v.num - 1] = sum([1 for e in self.__edges if v in e])
-
-        self.__rotulo = list(default_list_range)
-        for v in self.__vertices:
-            self.__rotulo[v.num - 1] = v.label
+            self.__grau[v - 1] = sum([1 for e in self.__edges if v in e])
 
         # Representações
         self.__neighbours = list(default_list_range)
@@ -50,17 +35,17 @@ class Grafo:
         for v in self.__vertices:
             neighbours = list()
             for u in self.__vertices:
-                if fset([v.num, u.num]) in self.__edges:
-                    pair = (u.num, self.__weights[fset([u.num,v.num])])
+                if fset([v, u]) in self.__edges:
+                    pair = (u, self.__weights[fset([u, v])])
                     neighbours.append(pair)
-            self.__neighbours[v.num - 1] = neighbours
+            self.__neighbours[v - 1] = neighbours
         
         for v in self.__vertices:
             for u in self.__vertices:
                 if fset([u, v]) in self.__edges:
-                    self.__matrix[v.num - 1][u.num - 1] = self.__weights[fset([u, v])]
+                    self.__matrix[v - 1][u - 1] = self.__weights[fset([u, v])]
                 else:
-                    self.__matrix[v.num - 1][u.num - 1] = float('inf')
+                    self.__matrix[v - 1][u - 1] = float('inf')
 
     # Debugging
     def __repr__(self) -> str:
@@ -81,44 +66,19 @@ class Grafo:
         return self.__len_edges
     
     def grau(self, v) -> int: #O(1), assumindo O(isinstace) = O(1)
-        if isinstance(v, int):
-            return self.__grau[v - 1]
-        elif isinstance(v, Vertice):
-            return self.__grau[v.num - 1]
-        else:
-            raise ValueError
+        return self.__grau[v - 1]
     
     def rotulo(self, v) -> str: #O(1), assumindo O(isinstace) = O(1)
-        if isinstance(v, int):
-            return self.__rotulo[v - 1]
-        elif isinstance(v, Vertice):
-            return self.__rotulo[v.num - 1]
-        else:
-            raise ValueError
+        return self.__rotulo[v - 1]
     
     def vizinhos(self, v) -> list: #O(1)
-        if isinstance(v, int):
-            return self.__neighbours[v - 1]
-        elif isinstance(v, Vertice):
-            return self.__neighbours[v.num - 1]
-        else:
-            raise ValueError
+        return self.__neighbours[v - 1]
     
     def ha_aresta(self, u, v) -> bool: #O(1), assumindo O(isinstace) = O(1)
-        if isinstance(u, int) and isinstance(v, int):
-            return self.__matrix[u - 1][v - 1] != 0
-        elif isinstance(u, Vertice) and isinstance(v, Vertice):
-            return self.__matrix[u.num - 1][v.num - 1] != 0
-        else:
-            raise ValueError
+        return self.__matrix[u - 1][v - 1] != 0
 
     def peso(self, u, v) -> float: #O(1), assumindo O(isinstace) = O(1)
-        if isinstance(u, int) and isinstance(v, int):
-            return self.__matrix[u - 1][v - 1]
-        elif isinstance(u, Vertice) and isinstance(v, Vertice):
-            return self.__matrix[u.num - 1][v.num - 1]
-        else:
-            raise ValueError
+        return self.__matrix[u - 1][v - 1]
 
     # 2 [Buscas]
     def busca_largura(self, indice):
@@ -158,80 +118,74 @@ class Grafo:
 
     # 3 [Ciclo Euleriano]
     def ciclo_euleriano(self):
-        V: Vertice = None
-        for v in self.__vertices:
-            if self.grau(v) % 2 != 0:
-                print(f"Vértice {v} com grau ímpar, não há ciclo euleriano.")
-                break
-            V = v if len(self.vizinhos(v)) != 0 else V
+        C = dict()
+        for e in self.__edges:
+            C[e] = False
         
-        # Usando Hierholzer
-        C = [False]*self.qtd_arestas()
-        E = enumerate(self.__edges)
-        r, ciclo = self.__subciclo_euleriano(V, C, E)
+        v = self.__vertices[0]
 
-        if not r: return (r, None)
+        r, ciclo = self.__subciclo_euleriano(v, C)
+
+        if not r:
+            return (False, None)
         else:
-            for i, _ in E:
-                if not C[i]: return (C[i], None)
-            
+            for e in self.__edges:
+                if not C[e]: return (False, None)
+
             return (True, ciclo)
         
-    def __subciclo_euleriano(self, v: Vertice, C: list[bool], E: list) -> (bool, tuple):
-        ciclo = list()
-        ciclo.append(v)
-        T: Vertice = v
-        VU: fset = None
+    def __subciclo_euleriano(self, v, C: dict) -> (bool, tuple):
+        ciclo = [v]
+        t = v
 
         while True:
-            p = 0
-            for i, e in E:
-                if not C[i]: return (False, None)
-                p += 1
-                VU = e
-            
-            C[p] = True
-            v = list(VU.difference(fset([v])))[0]
 
+            if not any(C[fset({u, v})] for u in self.vizinhos(v)):
+                return (False, None)
+
+            E = None
+            U = None
+            for e in self.__edges:
+                u, _ = e
+                if not C[e]:
+                    E = e
+                    U = u
+                    break
+            
+            C[E] = True
+
+            v = U
             ciclo.append(v)
 
-            if T == v: break
+            if v == t: break
         
-        for i, e in E:
-            if not C[i]:
-                r: bool = None
-                ciclo2: list = None
-                X: Vertice = None
-                for x in e:
-                    X = x
-                    r, ciclo2 = self.__subciclo_euleriano(x, C, E)
-                    break
+        F = [u for u in ciclo if any([not C[fset({u, v})] for u, v in self.__edges])]
+        for x in F:
+            r, ciclo2 = self.__subciclo_euleriano(x, C)
+            if not r: return (False, None)
 
-                if not r: return (False, None)
-                
-                if ciclo2.count(X) == 2:
-                    where_to = ciclo.index(X)
-                    ciclo.remove(X)
-                    for p in ciclo2:
-                        ciclo.insert(where_to + 1, p)
+            if x in ciclo and ciclo2.count(x) == 2:
+                i = ciclo.index(x)
+                ciclo.remove(x)
+                for p in ciclo2[:-1]:
+                    ciclo.insert(i + 1, p)
 
         return (True, ciclo)
-
     # 4 [Bellman-Ford ou Dijkstra]
     def bellman_ford(self, origem) -> (bool, list, list):
-        if (isinstance(origem, Vertice)):
-            origem = origem.num
-
         D = [float('inf')]*self.qtd_vertices()
         A = [None]*self.qtd_vertices()
         D[origem - 1] = 0
 
-        for i in range(1, self.qtd_vertices() - 1):
+        for _ in range(1, self.qtd_vertices() - 1):
             for e in self.__edges:
                 u, v = e
                 if D[v - 1] > D[u - 1] + self.__weights[e]:
                     D[v - 1] = D[u - 1] + self.__weights[e]
                     A[v - 1] = u
+                elif D[u - 1] > D[v - 1] + self.__weights[e]:
+                    D[u - 1] = D[v - 1] + self.__weights[e]
+                    A[u - 1] = v
 
         for e in self.__edges:
             u, v = e
@@ -243,24 +197,76 @@ class Grafo:
         self.__bellman_ford_print(True, D, A, origem=origem)
         return (True, D, A)
     
-    def __bellman_ford_print(self, found, D, A, origem):
-        if not found:
-            print("Menor caminho not found.")
+    def __bellman_ford_print(self, cycle_free, D, A, origem):
+        if not cycle_free:
+            print("Ciclo negativo encontrado.")
+            return
 
         for v in self.__vertices:
+            print(f"{v}: ", end = "")
             d = 0
-            if v.num == origem:
-                print(f"{v.num}: {origem}; d = {d}")
+            path = list()
+            a = v
+            if v == origem:
+                print(f"{v}", end = "")
             else:
-                next_vertice = A[v.num]
-                cost = 0
-                A_list = list()
-                A_list.append(v)
-                while v != origem:
-                    d += self.__weights(fset([v, next_vertice]))
-                    v = next_vertice
-                    next_vertice = A[v.num]
-                print(f"{v.num}: ".join(str(u.num) + " " for u in self.__vertices if u == A[v.num - 1]))
+                while True:
+                    if A[a - 1] is not None:
+                        d += self.__weights[fset([a, A[a - 1]])]
+                    path.append(a)
+                    a = A[a - 1]
+                    if a == origem or a is None:
+                        path.append(a)
+                        break
+                
+                for i, p in enumerate(reversed(path)):
+                    if None in path: break
+                    if i < len(path) - 1:
+                        print(f"{p}, ", end = "")
+                    else:
+                        print(f"{p}", end = "")
+                    
+            print(f"; d = {d}")
+
+    # 5 [Floyd-Warshall]
+    def floyd_warshall(self):
+        F = self.qtd_vertices()
+        D = [[[0]*F for _ in range(F)] for _ in range(F)]
+        D[0] = self.__W()
+
+        for k in range(1, F):
+            for v in self.__vertices:
+                for u in self.__vertices:
+                    S = D[k - 1][u - 1][k - 1] + D[k - 1][k - 1][v - 1]
+                    D[k][v - 1][u - 1] = min([D[k - 1][v - 1][u - 1], S])
+
+        self.__print_floyd_warshall(D[F-1])
+        return D[F - 1]
+
+    def __W(self) -> list:
+        F = self.qtd_vertices()
+        D = [[0]*F for _ in range(F)]
+
+        for v in self.__vertices:
+            for u in self.__vertices:
+                e = fset({v, u})
+                if e in self.__edges:
+                    D[v - 1][u - 1] = self.__weights[e]
+                elif v != u:
+                    D[v - 1][u - 1] = float('inf')
+
+        return D 
+
+    def __print_floyd_warshall(self, D):
+        for v in self.__vertices:
+            print(f"{v}: ", end = "")
+            for u in self.__vertices:
+                print(f"{D[v - 1][u - 1]}, ", end = "")
+            print()
+
+def mprint(list):
+    for n in list:
+        print(n) 
 
 def ler(file_name: str) -> Grafo:
 
@@ -268,7 +274,6 @@ def ler(file_name: str) -> Grafo:
     NOTA: Se o formato do arquivo não for exatamente
     o explícito no final do enunciado da atividade,
     o método não funciona.\n
-    NOTA: Os arcos usam os índices dos vértices, não objetos do tipo vértice.
     '''
 
     # If it is .net
@@ -290,7 +295,7 @@ def ler(file_name: str) -> Grafo:
                 this_line = file.readline().split()
                 index = int(this_line[0])
                 label = "".join(word + " " for word in this_line[1:])
-                vertices.append(Vertice(label, int(index)))
+                vertices.append((int(index), label))
 
             comment_line = file.readline().strip()
             check = comment_line == "*edges" or comment_line == "*arcs"
