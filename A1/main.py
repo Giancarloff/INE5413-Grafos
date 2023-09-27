@@ -7,9 +7,9 @@ facebook_santiago = "instancias/facebook/facebook_santiago.net"
 
 file = contem_ciclo_euleriano 
 
-print("Crindo Grafo...")
+print(f"Lendo grafo do arquivo {file}")
 G = ler(file)
-print(f"Grafo criado! Arquivo lido: {file}")
+print(f"Grafo pronto!")
 
 print("# Busca em Largura #")
 G.busca_largura(1)

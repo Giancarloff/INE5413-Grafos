@@ -58,6 +58,10 @@ class Grafo:
     @property
     def adj_list(self):
         return self.__neighbours
+    
+    @property
+    def vertices(self):
+        return self.__vertices
 
     def qtd_vertices(self) -> int: #O(1)
         return self.__len_vertices
@@ -140,7 +144,15 @@ class Grafo:
 
         while True:
 
-            if not any(C[fset({u, v})] for u in self.vizinhos(v)):
+            # for all v, Cv
+
+            forall = True
+            for u in self.vizinhos(v):
+                if any(not C[e] for e in self.__edges if u in e):
+                    forall = False
+                    break
+
+            if not forall:
                 return (False, None)
 
             E = None
@@ -157,7 +169,7 @@ class Grafo:
             v = U
             ciclo.append(v)
 
-            if v == t: break
+            if v == t or v == None: break
         
         F = [u for u in ciclo if any([not C[fset({u, v})] for u, v in self.__edges])]
         for x in F:
@@ -171,6 +183,13 @@ class Grafo:
                     ciclo.insert(i + 1, p)
 
         return (True, ciclo)
+    
+    def recursive_search(self, origin, path: list) -> list:
+        for v in self.vertices:
+            if self.grau(v) % 2 != 0: return None
+        
+        return []
+
     # 4 [Bellman-Ford ou Dijkstra]
     def bellman_ford(self, origem) -> (bool, list, list):
         D = [float('inf')]*self.qtd_vertices()
