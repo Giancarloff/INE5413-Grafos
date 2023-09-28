@@ -69,19 +69,19 @@ class Grafo:
     def qtd_arestas(self) -> int: #O(1)
         return self.__len_edges
     
-    def grau(self, v) -> int: #O(1), assumindo O(isinstace) = O(1)
+    def grau(self, v) -> int: #O(1)
         return self.__grau[v - 1]
     
-    def rotulo(self, v) -> str: #O(1), assumindo O(isinstace) = O(1)
+    def rotulo(self, v) -> str: #O(1)
         return self.__rotulo[v - 1]
     
     def vizinhos(self, v) -> list: #O(1)
         return self.__neighbours[v - 1]
     
-    def ha_aresta(self, u, v) -> bool: #O(1), assumindo O(isinstace) = O(1)
+    def ha_aresta(self, u, v) -> bool: #O(1)
         return self.__matrix[u - 1][v - 1] != 0
 
-    def peso(self, u, v) -> float: #O(1), assumindo O(isinstace) = O(1)
+    def peso(self, u, v) -> float: #O(1)
         return self.__matrix[u - 1][v - 1]
 
     # 2 [Buscas]
@@ -122,73 +122,54 @@ class Grafo:
 
     # 3 [Ciclo Euleriano]
     def ciclo_euleriano(self):
-        C = dict()
-        for e in self.__edges:
-            C[e] = False
-        
-        v = self.__vertices[0]
-
-        r, ciclo = self.__subciclo_euleriano(v, C)
-
-        if not r:
-            return (False, None)
-        else:
-            for e in self.__edges:
-                if not C[e]: return (False, None)
-
-            return (True, ciclo)
-        
-    def __subciclo_euleriano(self, v, C: dict) -> (bool, tuple):
-        ciclo = [v]
-        t = v
-
-        while True:
-
-            # for all v, Cv
-
-            forall = True
-            for u in self.vizinhos(v):
-                if any(not C[e] for e in self.__edges if u in e):
-                    forall = False
-                    break
-
-            if not forall:
-                return (False, None)
-
-            E = None
-            U = None
-            for e in self.__edges:
-                u, _ = e
-                if not C[e]:
-                    E = e
-                    U = u
-                    break
-            
-            C[E] = True
-
-            v = U
-            ciclo.append(v)
-
-            if v == t or v == None: break
-        
-        F = [u for u in ciclo if any([not C[fset({u, v})] for u, v in self.__edges])]
-        for x in F:
-            r, ciclo2 = self.__subciclo_euleriano(x, C)
-            if not r: return (False, None)
-
-            if x in ciclo and ciclo2.count(x) == 2:
-                i = ciclo.index(x)
-                ciclo.remove(x)
-                for p in ciclo2[:-1]:
-                    ciclo.insert(i + 1, p)
-
-        return (True, ciclo)
-    
-    def recursive_search(self, origin, path: list) -> list:
         for v in self.vertices:
             if self.grau(v) % 2 != 0: return None
+
+        found = False
+        path = list()
+        visited = list()
+        for v in self.__vertices:
+            self.recursive_search(v, v, path, visited)
+            found = all(e in visited for e in self.__edges)
+            if found: 
+                path.append(v)
+                break
         
-        return []
+        # Printing
+        if found:
+            print("1")
+            for i, n in enumerate(path):
+                if i < len(path) - 1:
+                    print(n, end = ", ")
+                else:
+                    print(n)
+        else:
+            print("0")
+            print(None)
+
+        return path if found else []
+
+    def recursive_search(self, O, V, path: list, visited: list):
+        '''
+        Logicamente funciona sem a lista path, porém\n
+        ela é necessária para o print
+        '''
+        if O == V and len(path) > 0:
+            return
+
+        for e in self.__edges:
+            if e not in visited and V in e:
+                path.append(V)
+                visited.append(e)
+                u, v = e
+                N = u if u != V else v
+                self.recursive_search(O, N, path, visited)
+
+        all_edges = all(e in visited for e in self.__edges)
+        if not all_edges and len(path) > 0:
+            path.pop()
+
+        # return path
 
     # 4 [Bellman-Ford ou Dijkstra]
     def bellman_ford(self, origem) -> (bool, list, list):

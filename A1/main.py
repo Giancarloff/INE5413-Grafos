@@ -14,11 +14,11 @@ print(f"Grafo pronto!")
 print("# Busca em Largura #")
 G.busca_largura(1)
 
-print("# Ciclo Euleriano")
-print(G.ciclo_euleriano())
+print("# Ciclo Euleriano #")
+G.ciclo_euleriano()
 
-print("# Bellman-Ford")
+print("# Bellman-Ford #")
 G.bellman_ford(1)
 
-print("# Floyd-Warshall")
+print("# Floyd-Warshall #")
 G.floyd_warshall()
