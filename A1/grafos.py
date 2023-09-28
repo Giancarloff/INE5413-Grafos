@@ -123,7 +123,9 @@ class Grafo:
     # 3 [Ciclo Euleriano]
     def ciclo_euleriano(self):
         for v in self.vertices:
-            if self.grau(v) % 2 != 0: return None
+            if self.grau(v) % 2 != 0: 
+                print("0")
+                return None
 
         found = False
         path = list()
