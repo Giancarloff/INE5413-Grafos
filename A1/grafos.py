@@ -153,7 +153,7 @@ class Grafo:
         '''
         Logicamente funciona sem a lista path, porém\n
         ela é necessária para o print
-        '''    
+        '''
         for e in self.__edges:
             if e not in visited and V in e:
                 path.append(V)
@@ -187,14 +187,14 @@ class Grafo:
         for e in self.__edges:
             u, v = e
             if D[v - 1] > D[u - 1] + self.__weights[e]:
-                self.__bellman_ford_print(False, D, A, origem=origem)
+                self.__bellman_ford_print(False, A, origem=origem)
                 return (False, None, None)
                 
             
-        self.__bellman_ford_print(True, D, A, origem=origem)
+        self.__bellman_ford_print(True, A, origem=origem)
         return (True, D, A)
     
-    def __bellman_ford_print(self, cycle_free, D, A, origem):
+    def __bellman_ford_print(self, cycle_free, A, origem):
         if not cycle_free:
             print("Ciclo negativo encontrado.")
             return
