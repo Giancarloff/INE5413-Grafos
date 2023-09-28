@@ -153,10 +153,7 @@ class Grafo:
         '''
         Logicamente funciona sem a lista path, porém\n
         ela é necessária para o print
-        '''
-        if O == V and len(path) > 0:
-            return
-
+        '''    
         for e in self.__edges:
             if e not in visited and V in e:
                 path.append(V)
