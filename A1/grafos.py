@@ -4,7 +4,6 @@ class Grafo:
     '''
     Grafo não-dirigido e ponderado \n
     NOTA: Métodos de consulta que recebem vértices como parâmetros esperam:
-        Objeto(s) do tipo Vértice XOR índice (começando em 1, corrigido dentro dos metodos)
     '''
 
     def __init__(self, vertices: fset, edges: fset[fset], weights: dict) -> None:

@@ -1,9 +1,9 @@
-from grafos import Grafo, ler, mprint
+from grafos import ler
 
-caminho_minimo = "instancias/caminho_minimo/fln_pequena.net"
-contem_ciclo_euleriano = "instancias/ciclo_euleriano/ContemCicloEuleriano.net"
-sem_ciclo_euleriano = "instancias/ciclo_euleriano/SemCicloEuleriano.net"
-facebook_santiago = "instancias/facebook/facebook_santiago.net"
+caminho_minimo = "../instancias/caminho_minimo/fln_pequena.net"
+contem_ciclo_euleriano = "../instancias/ciclo_euleriano/ContemCicloEuleriano.net"
+sem_ciclo_euleriano = "../instancias/ciclo_euleriano/SemCicloEuleriano.net"
+facebook_santiago = "../instancias/facebook/facebook_santiago.net"
 
 file = contem_ciclo_euleriano 
 
