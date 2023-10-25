@@ -62,6 +62,14 @@ class Grafo:
     def vertices(self):
         return self.__vertices
 
+    @property
+    def edges(self):
+        return self.__edges
+
+    @property
+    def weights(self):
+        return self.__weights
+
     def qtd_vertices(self) -> int: #O(1)
         return self.__len_vertices
     
@@ -268,40 +276,54 @@ class GrafoDirigido(Grafo):
     Classe para Grafos dirigidos e não-ponderados
     '''
 
-    def __init__(self, vertices: fset, edges: fset[tuple]) -> None:
-
-        __weights = dict()
-        for e in edges:
-            __weights[e] = 1
-
+    def __init__(self, vertices: fset, edges: fset[tuple], __weights) -> None:
         super().__init__(vertices, edges, __weights)
 
-    # Métodos úteis
+    def __repr__(self):
+        return f"".join(str(v) + " " for v in self.vertices) + " ;; " + "".join(str(e) + " " for e in self.edges)
 
+    # Override
+    def peso(self, u, v):
+        return self.weights[(u, v)]
+
+    # Métodos úteis
     def vizinhos_positivos(self, v):
         pos_hood = list()
-        for (p, q) in self.__edges:
+        for (p, q) in self.edges:
             if v == p: pos_hood.append(q)
 
         return pos_hood
 
     # 1. [Componentes Fortemente Conexas]
     def componentes_conexas(self):
-        C, T, A, F = self.__dfs()
+        '''
+        NOTA: Estruturas de dados retornadas têm indice corrigido! (por -1), ou seja,
+        não pode-se acessar o dado passando o vértice v original, deve-se passar v - 1
+        '''
+        _, _, _, F = self.__dfs()
 
         ET_list = list()
-        for (u, v) in self.__edges:
+        for (u, v) in self.edges:
             ET_list.append((v, u))
         
         ET = fset(ET_list)
 
-        GT = GrafoDirigido(self.vertices, ET)
+        vlist = list()
+        for v in self.vertices:
+            vlist.append((v, self.rotulo(v)))
 
-        _, _, A2, _ = GT.dfs_adaptado()
+        GT = GrafoDirigido(fset(vlist), ET, self.weights)
+
+        _, _, A2, _ = GT.dfs_adaptado(F)
+
+        self.__print_conexas(A2)
 
         return A2
 
     def __dfs(self):
+        '''
+        NOTA: Estruturas de dados retornadas têm indice corrigido! (por -1)
+        '''
         qtd_v = self.qtd_vertices()
         C = [False]*qtd_v
         T = [float('inf')]*qtd_v
@@ -310,29 +332,148 @@ class GrafoDirigido(Grafo):
 
         tempo = 0
 
-        for v in self.__vertices:
-            if not C[v]:
+        for v in self.vertices:
+            if not C[v - 1]:
                 self.__dfs_visit(v, C, T, A, F, tempo)
 
         return C, T, A, F
 
+    def dfs_adaptado(self, F):
+        '''
+        NOTA: Estruturas de dados retornadas têm indice corrigido! (por -1)
+        '''
+        qtd_v = self.qtd_vertices()
+        C = [False]*qtd_v
+        T = [float('inf')]*qtd_v
+        F2 = [float('inf')]*qtd_v
+        A = [None]*qtd_v
+
+        tempo = 0
+
+        for v, _ in sorted(enumerate(self.vertices), key=lambda x: x[1], reverse=True):
+            # Sort dos vértices pelo segundo elemento (tempo de F = x[1]) da enumeração, revertido pra ter-se do maior pro menor
+            if not C[v - 1]:
+                self.__dfs_visit(v, C, T, A, F, tempo)
+
+        return C, T, A, F2
+
     def __dfs_visit(self, v, C, T, A, F, tempo):
-        C[v] = True
+        C[v - 1] = True
         tempo += 1
-        T[v] = tempo
+        T[v - 1] = tempo
 
         for u in self.vizinhos_positivos(v):
-            A[u] = v
+            A[u - 1] = v
             self.__dfs_visit(u, C, T, A, F, tempo)
 
         tempo += 1
-        F[v] = tempo
+        F[v - 1] = tempo
+
+    def __print_conexas(self, A):
+        S = dict()
+        for v in self.vertices:
+            S[v] = list([v])
+        
+        for v in self.vertices:
+            if A[v - 1] is not None:
+                x = list()
+                x.extend(S[v])
+                x.extend(S[A[v - 1]])
+
+                for y in x:
+                    S[y] = x
+
+        S_list = list()
+        for key in S.keys():
+            X = S[key]
+            if X not in S_list:
+                S_list.append(S[key])
+
+        for l in S_list:
+            print("".join(str(q) + "," for q in l[:-1]), end="")
+            print(l[-1])
+
+
+    # 2. [Ordenação Topológica]
+    def ordenacao_topologica(self):
+        '''
+        Não há verificação de ciclos no Grafo - espera-se input nos conformes
+        '''
+
+        len_v = self.qtd_vertices()
+        C = [False]*len_v
+        T = [float('inf')]*len_v
+        F = [float('inf')]*len_v
+
+        tempo = 0
+
+        O = list()
+        for v in self.vertices:
+            if not C[v - 1]:
+                self.__dfs_visit_ot(v, C, T, F, tempo, O)
+
+        # Print
+        for v in O[:-1]:
+            print(self.rotulo(v), end=" → ")
+
+        print(self.rotulo(O[-1]), end=". \n")
+
+        return O
+    
+    def __dfs_visit_ot(self, v, C, T, F, tempo, O: list):
+        C[v - 1] = True
+        tempo += 1
+        T[v - 1] = tempo
+
+        for u in self.vizinhos_positivos(v):
+            if not C[u - 1]:
+                self.__dfs_visit_ot(u, C, T, F, tempo, O)
+        
+        tempo += 1
+        F[v - 1] = tempo
+
+        O.insert(0, v)
+
+    # 3. [Kruskal ou Prim]
+    # Kruskal
+    def arvore_minima_geradora(self):
+        A = list()
+        S = dict()
+
+        for v in self.vertices:
+            S[v] = list()
+            S[v].append(v)
+
+        # Lista de (aresta, peso)
+        Ep = list()
+        for (u, v) in self.edges:
+            Ep.append(((u, v), self.peso(u, v)))
+
+        Ep.sort(key = lambda x: x[1]) # Sort crescente por pesos
+
+        for (u, v), _ in Ep:
+            if S[u] != S[v]:
+                A.append((u, v))
+                x = list()
+                x.extend(S[u])
+                x.extend(S[v])
+
+                for y in x:
+                    S[y] = x
+
+        # Print
+        print(sum(self.peso(u, v) for u, v in A))
+        for (p, q) in A[:-1]:
+            print(f"{p}-{q}", end=", ")
+        print(f"{A[-1][0]}-{A[-1][1]}")
+
+        return A
 
 def mprint(list):
     for n in list:
         print(n) 
 
-def ler(file_name: str) -> Grafo:
+def ler(file_name: str, dirigido: bool = False) -> Grafo | GrafoDirigido:
 
     '''
     NOTA: Se o formato do arquivo não for exatamente
@@ -362,8 +503,12 @@ def ler(file_name: str) -> Grafo:
                 vertices.append((int(index), label))
 
             comment_line = file.readline().strip()
-            dirigido = False
-            if comment_line == "*edges":
+
+            if comment_line != "*edges" and comment_line != "*arcs":
+                print(f".net file in wrong format! Was expecting *edges or *arcs, got {comment_line}")
+                return None
+            
+            if not dirigido:
                 while True:
                     this_line = file.readline().split()
                     if len(this_line) == 0: break
@@ -375,21 +520,20 @@ def ler(file_name: str) -> Grafo:
                     edges.append(new_edge)
                     weights[new_edge] = w
 
-            elif comment_line == "*arcs":
-                dirigido = True
+            else:
                 while True:
                     this_line = file.readline().split()
                     if (len(this_line) == 0): break
 
                     x = int(this_line[0])
                     y = int(this_line[1])
-                    # o peso já é considerado 1 no __init do grafo dirigido
+                    w = float(this_line[2])
 
-                    edges.append((x, y))
-            else:
-                print(f".net file in wrong format! Was expecting *edges or *arcs, got {comment_line}")
+                    new_edge = tuple([x, y])
+                    edges.append(new_edge)
+                    weights[new_edge] = w
 
-            return Grafo(fset(vertices), fset(edges), weights) if not dirigido else GrafoDirigido(fset(vertices), fset(edges))
+            return Grafo(fset(vertices), fset(edges), weights) if not dirigido else GrafoDirigido(fset(vertices), fset(edges), weights)
         # with open
     else:
         print("Arquivo de tipo desconhecido.")
