@@ -450,6 +450,7 @@ class GrafoDirigido(Grafo):
             Ep.append(((u, v), self.peso(u, v)))
 
         Ep.sort(key = lambda x: x[1]) # Sort crescente por pesos
+        # key aplica a função e faz o sort pelos resultados
 
         for (u, v), _ in Ep:
             if S[u] != S[v]:
